@@ -1,0 +1,15 @@
+Game can StartGame, StopGame
+
+Player can control SpaceShip
+
+SpaceShip can StartMove, EndMove, Rotate, Fire, Destroyed, Respawn
+StartMove include MoveCommand, BurnFuelCommand
+MoveCommand predates BurnFuelCommand
+
+Projectile can ProjectileStartMove, ProjectileEndMove, ProjectileDestroyed
+Fire include LaunchProjectile
+LaunchProjectile predates ProjectileStartMove
+
+Game must CheckCollision when StartMove or ProjectileStartMove
+CheckCollision predates Destroyed, ProjectileDestroyed
+Destroyed precedes Respawn
