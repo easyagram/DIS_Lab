@@ -11,8 +11,6 @@ class Elevator:
         self.task_queue = []
 
     def move_up(self):
-        if self.current_floor >= self.max_floor:
-            raise Exception("Нельзя подняться выше. Лифт уже на верхнем этаже.")
         self.current_floor += 1
         self.steps += 1
         self.direction = "up"
@@ -20,8 +18,6 @@ class Elevator:
         self.command_log.append(f"Проехать этаж вверх -> {self.current_floor}")
 
     def move_down(self):
-        if self.current_floor <= self.min_floor:
-            raise Exception("Нельзя спуститься ниже. Лифт уже на первом этаже.")
         self.current_floor -= 1
         self.steps += 1
         self.direction = "down"
@@ -48,6 +44,7 @@ class Elevator:
     def get_commands(self):
         return self.command_log
 
+
 class ElevatorController:
     def __init__(self, num_floors, elevators_positions):
         self.num_floors = num_floors
@@ -57,16 +54,20 @@ class ElevatorController:
         self.calls[num_floors]["up"] = None
 
     def find_best_elevator(self, call_floor, direction):
+        is_suitable = lambda elevator: (
+            elevator.state == "IDLE" or
+            (elevator.direction == direction and
+             (direction == "up" and elevator.current_floor <= call_floor) or
+             (direction == "down" and elevator.current_floor >= call_floor))
+        )
+        
         suitable_elevators = [
             (abs(elevator.current_floor - call_floor), idx)
             for idx, elevator in enumerate(self.elevators)
-            if elevator.state == "IDLE" or \
-               (elevator.direction == direction and \
-                ((direction == "up" and elevator.current_floor <= call_floor) or \
-                 (direction == "down" and elevator.current_floor >= call_floor)))
+            if is_suitable(elevator)
         ]
         suitable_elevators.sort()
-        return suitable_elevators[0][1] if suitable_elevators else None
+        return suitable_elevators
 
     def transition(self, elevator, action):
         transitions = {
@@ -81,28 +82,37 @@ class ElevatorController:
         (action_function or (lambda: (_ for _ in ()).throw(Exception(f"Недопустимый переход: {elevator.state} -> {action}"))))()
 
     def process_call(self, call_floor, destination_floor):
-        direction = {True: "up", False: "down"}[destination_floor > call_floor]
+        direction = (destination_floor > call_floor) * "up" + (destination_floor < call_floor) * "down"
         self.calls[call_floor][direction] = True
 
-        best_elevator_idx = self.find_best_elevator(call_floor, direction)
-        (lambda: (_ for _ in ()).throw(Exception(f"Нет доступного лифта для вызова с этажа {call_floor}.")))() if best_elevator_idx is None else None
+        best_elevators = self.find_best_elevator(call_floor, direction)
+        (lambda: (_ for _ in ()).throw(Exception(f"Нет доступного лифта для вызова с этажа {call_floor}.")))() if not best_elevators else None
 
-        elevator = self.elevators[best_elevator_idx]
+        best_elevator_idx = best_elevators[0][1]
+        second_elevator_idx = best_elevators[1][1] if len(best_elevators) > 1 else best_elevator_idx
+
+        best_elevator = self.elevators[best_elevator_idx]
+        second_elevator = self.elevators[second_elevator_idx]
+
+        elevator_to_use_idx = (abs(second_elevator.current_floor - call_floor) < abs(best_elevator.current_floor - call_floor)) * second_elevator_idx + \
+                              (abs(second_elevator.current_floor - call_floor) >= abs(best_elevator.current_floor - call_floor)) * best_elevator_idx
+
+        elevator = self.elevators[elevator_to_use_idx]
         elevator.add_task(call_floor)
         elevator.add_task(destination_floor)
-        print(f"Вызов с этажа {call_floor} на этаж {destination_floor}. Назначен лифт №{best_elevator_idx + 1}.")
+        print(f"Вызов с этажа {call_floor} на этаж {destination_floor}. Назначен лифт №{elevator_to_use_idx + 1}.")
 
         while elevator.task_queue:
             next_floor = elevator.task_queue.pop(0)
             while elevator.current_floor != next_floor:
-                action = {True: "MOVE_UP", False: "MOVE_DOWN"}[elevator.current_floor < next_floor]
+                action = (elevator.current_floor < next_floor) * "MOVE_UP" + (elevator.current_floor > next_floor) * "MOVE_DOWN"
                 self.transition(elevator, action)
 
             self.transition(elevator, "OPEN_DOOR")
             self.transition(elevator, "CLOSE_DOOR")
 
-        print(f"Лифт №{best_elevator_idx + 1} завершил задачи. Пройдено этажей: {elevator.steps}")
-        print(f"Команды для лифта №{best_elevator_idx + 1}: {elevator.get_commands()}\n")
+        print(f"Лифт №{elevator_to_use_idx + 1} завершил задачи. Пройдено этажей: {elevator.steps}")
+        print(f"Команды для лифта №{elevator_to_use_idx + 1}: {elevator.get_commands()}\n")
         elevator.reset_steps()
 
 
