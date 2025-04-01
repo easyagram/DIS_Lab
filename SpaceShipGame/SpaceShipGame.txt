@@ -1,15 +1,22 @@
-Game can StartGame, StopGame
+Game can StartGame, StopGame, PauseGame, ResumeGame
 
-Player can control SpaceShip
+Player can control SpaceShip, DefenseSystem, NavigationSystem
 
-SpaceShip can StartMove, EndMove, Rotate, Fire, Destroyed, Respawn
+SpaceShip can StartMove, EndMove, Rotate, Fire, Destroyed, Respawn, ActivateShield, DeactivateShield
 StartMove include MoveCommand, BurnFuelCommand
-MoveCommand predates BurnFuelCommand
+ActivateShield include ShieldUpCommand
+DeactivateShield include ShieldDownCommand
 
 Projectile can ProjectileStartMove, ProjectileEndMove, ProjectileDestroyed
 Fire include LaunchProjectile
 LaunchProjectile predates ProjectileStartMove
 
+DefenseSystem can ActivateShield, DeactivateShield, AutoRepair
+NavigationSystem can SetCourse, AdjustCourse, EngageWarpDrive, DisengageWarpDrive
+
 Game must CheckCollision when StartMove or ProjectileStartMove
 CheckCollision predates Destroyed, ProjectileDestroyed
 Destroyed precedes Respawn
+
+NavigationSystem must RecalculateRoute when AdjustCourse or EngageWarpDrive
+RecalculateRoute predates SetCourse
