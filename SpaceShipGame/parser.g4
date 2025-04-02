@@ -1,26 +1,27 @@
 parser grammar SpaceBattleParser;
 options { tokenVocab = SpaceBattleLexer; }
 
-game: rules+;
+game: entity+ ;
 
-rules
+entity: statement+ ;
+
+statement
     : canRule
     | canControlRule
     | includeRule
-    | predatesRule
+    | orderingRule
     | mustRule
     ;
 
-canRule : ID CAN list_id;
+canRule: ID CAN idListComma ;
+canControlRule: ID CAN_CONTROL idListComma ;
+includeRule: ID INCLUDE idListComma ;
 
-canControlRule: ID CAN_CONTROL list_id;
+orderingRule: ID orderingKeyword idListComma ;
 
-includeRule : ID INCLUDE list_id;
+orderingKeyword: PREDATES | PRECEDES ;
 
-predatesRule : ID PREDATES list_id;
+mustRule: ID MUST ID WHEN idListOr ;
 
-mustRule: ID MUST ID WHEN ID;
-
-list_id: ID (COMMA ID)* ;
-
-id: ID (OR ID)*;
+idListComma: ID (COMMA ID)* ;
+idListOr: ID (OR ID)* ;
