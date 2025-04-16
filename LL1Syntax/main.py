@@ -3,14 +3,24 @@ import pandas as pd
 
 class Lexer:
     terminal_symbols = [",", ")", "(", "true", "false", "*", "/", "+", "-", "or", "and", "not", "end", "const", "def", "=", "<", ">"]
-    
+
     def __init__(self, input_string):
         self.tokens = self.tokenize(input_string)
         self.current_index = 0
 
     def tokenize(self, input_string):
         words = input_string.split()
-        tokens = ["const" if word.isdigit() else "def" if (i + 1 < len(words) and words[i + 1] == "(") else "var" if word not in self.terminal_symbols else word for i, word in enumerate(words)]
+        token_map = {sym: sym for sym in self.terminal_symbols}
+
+        tokens = list(map(
+            lambda iw:
+                token_map.get(iw[1]) or
+                ("const" * iw[1].isdigit()) or
+                ("def" * (iw[0] + 1 < len(words) and words[iw[0] + 1] == "(")) or
+                "var",
+            enumerate(words)
+        ))
+
         tokens.append("end")
         return tokens
 
@@ -24,10 +34,11 @@ class Lexer:
         (lambda: (_ for _ in ()).throw(ValueError("ERROR")) if symbol not in valid_symbols else None)()
 
 
+
 class Stack:
     def __init__(self):
         self.stack = []
-    
+
     push = lambda self, item: self.stack.append(item)
     pop = lambda self: self.stack.pop() if self.stack else None
     is_empty = lambda self: not self.stack
@@ -47,17 +58,17 @@ class LL1Parser:
         (1, 0, 0, 1): lambda *args: args[3].error(args[1], args[5]) or (args[4].pop() if not args[4].is_empty() else args[2]),
         (1, 0, 1, 1): lambda *args: args[3].error(args[1], args[5]) or args[3].accept(args[1]) or (args[4].pop() if not args[4].is_empty() else args[2])
     }
-    
+
     def __init__(self, transitions):
         self.transitions = transitions
         self.current_state = 1
         self.stack = Stack()
         self.lexer = None
-    
+
     def process(self, tokens):
         self.lexer = Lexer(" ".join(tokens))
         current_token = self.lexer.get_current_token()
-        
+
         while current_token is not None:
             (lambda: print("Parsing complete") or exit() if current_token == 'end' and self.stack.is_empty() else None)()
             state_data = self.transitions[self.current_state]
