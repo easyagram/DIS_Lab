@@ -1,26 +1,36 @@
 import re
 import pandas as pd
 
-class Lexer:
-    terminal_symbols = [",", ")", "(", "true", "false", "*", "/", "+", "-", "or", "and", "not", "end", "const", "def", "=", "<", ">"]
 
+terminal_symbols = {
+    "true": "true",
+    "false": "false",
+    "*": "*",
+    "/": "/",
+    "+": "+",
+    "-": "-",
+    "or": "or",
+    "and": "and",
+    "not": "not",
+    "end": "end",
+    "const": "const",
+    "def": "def",
+    "=": "=",
+    "<": "<",
+    ">": ">",
+    "(": "(",
+    ")": ")",
+    ",": ","
+}
+
+class Lexer:
     def __init__(self, input_string):
         self.tokens = self.tokenize(input_string)
         self.current_index = 0
 
     def tokenize(self, input_string):
         words = input_string.split()
-        token_map = {sym: sym for sym in self.terminal_symbols}
-
-        tokens = list(map(
-            lambda iw:
-                token_map.get(iw[1]) or
-                ("const" * iw[1].isdigit()) or
-                ("def" * (iw[0] + 1 < len(words) and words[iw[0] + 1] == "(")) or
-                "var",
-            enumerate(words)
-        ))
-
+        tokens = list(map(lambda w: terminal_symbols.get(w, w), words))
         tokens.append("end")
         return tokens
 
@@ -28,12 +38,12 @@ class Lexer:
         return self.tokens[self.current_index] if self.current_index < len(self.tokens) else None
 
     def accept(self, symbol):
-        (lambda: setattr(self, 'current_index', self.current_index + 1) if self.get_current_token() == symbol else None)()
+        (lambda: setattr(self, 'current_index', self.current_index + 1)
+         if self.get_current_token() == symbol else None)()
 
     def error(self, symbol, valid_symbols):
-        (lambda: (_ for _ in ()).throw(ValueError("ERROR")) if symbol not in valid_symbols else None)()
-
-
+        (lambda: (_ for _ in ()).throw(ValueError("ERROR"))
+         if symbol not in valid_symbols else None)()
 
 class Stack:
     def __init__(self):
@@ -44,10 +54,8 @@ class Stack:
     is_empty = lambda self: not self.stack
     __repr__ = lambda self: str(self.stack)
 
-
 class IState:
     execute = lambda self: None
-
 
 class LL1Parser:
     state_map = {
@@ -70,18 +78,23 @@ class LL1Parser:
         current_token = self.lexer.get_current_token()
 
         while current_token is not None:
-            (lambda: print("Parsing complete") or exit() if current_token == 'end' and self.stack.is_empty() else None)()
+            (lambda: print("Parsing complete") or exit()
+             if current_token == 'end' and self.stack.is_empty() else None)()
             state_data = self.transitions[self.current_state]
             print(f"State: {self.current_state}\t Token: {current_token}\t Stack: {self.stack}")
             valid_tokens, next_state, attr1, attr2, attr3, attr4 = state_data
             state_key = (attr1, attr2, attr3, attr4)
-            self.current_state = self.state_map[state_key](self.current_state, current_token, next_state, self.lexer, self.stack, valid_tokens)
+            self.current_state = self.state_map[state_key](
+                self.current_state, current_token, next_state,
+                self.lexer, self.stack, valid_tokens
+            )
             current_token = self.lexer.get_current_token()
         print("Grammar is true")
 
 
 df = pd.read_excel("predict_set.xlsx", index_col="№")
 dictionary = {i: [df[j][i] for j in df.columns] for i in range(1, df.shape[0] + 1)}
+
 
 input_code = "27 - 10 * ( 10 + 6 / 7 - ( 30 - 2 ) )"
 lexer = Lexer(input_code)
